@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>传世军械库 — 和平精英传世武装陈列</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07060a; --fg:#f3ece0;
+  --gold:#ffb300; --gold-d:#c87b00; --cyan:#5fe0d8; --red:#ff5a45;
+  --accent:#ffb300;
+  --pad-x:clamp(18px, 4.6vw, 96px);
+  --tac:polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+*,*::before,*::after{ box-sizing:border-box }
+html,body{ height:100%; background:#07060a; color:#f3ece0; font-family:'Noto Sans SC',sans-serif; -webkit-font-smoothing:antialiased }
+html,body{ overflow-x:hidden; max-width:100% }
+.num{ font-family:'Orbitron',sans-serif; letter-spacing:.03em }
+
+.hero{ position:relative; width:100%; height:100vh; height:100svh; min-height:560px; overflow:hidden;
+  background:radial-gradient(ellipse 120% 90% at 50% 42%,#151019 0%,#0a070c 55%,#050407 100%) }
+#scene{ position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; touch-action:none }
+#scene.dragging{ cursor:grabbing }
+
+/* ---------- ambient FX ---------- */
+.fx{ position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden }
+.fx-grid{ position:absolute; inset:-2px;
+  background-image:linear-gradient(rgba(255,214,150,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,214,150,.05) 1px,transparent 1px);
+  background-size:70px 70px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 44%,#000 22%,transparent 76%);
+          mask-image:radial-gradient(ellipse at 50% 44%,#000 22%,transparent 76%) }
+.fx-rays{ position:absolute; left:50%; top:-30%; width:150vmax; height:150vmax; transform:translateX(-50%); opacity:.16;
+  background:conic-gradient(from 0deg,transparent 0 6%,rgba(255,179,0,.55) 6.6%,transparent 7.2% 18%,rgba(255,179,0,.4) 18.6%,transparent 19.2% 30%,rgba(255,214,150,.5) 30.6%,transparent 31.2% 46%,rgba(255,179,0,.35) 46.6%,transparent 47.2% 62%,rgba(255,179,0,.5) 62.6%,transparent 63.2% 80%,rgba(255,214,150,.4) 80.6%,transparent 81.2%);
+  animation:spin 42s linear infinite }
+@keyframes spin{ to{ transform:translateX(-50%) rotate(360deg) } }
+.fx-scan{ position:absolute; inset:0; background:repeating-linear-gradient(180deg,rgba(255,220,160,.022) 0 1px,transparent 1px 4px) }
+.fx-sweep{ position:absolute; left:0; right:0; height:200px; top:-220px;
+  background:linear-gradient(180deg,transparent,rgba(255,179,0,.07) 45%,rgba(255,224,160,.13) 52%,transparent);
+  animation:sweep 8.5s linear infinite }
+@keyframes sweep{ to{ transform:translateY(calc(100vh + 240px)) } }
+.fx-vig{ position:absolute; inset:0; background:radial-gradient(ellipse at 50% 44%,transparent 34%,rgba(0,0,0,.6) 84%,rgba(0,0,0,.9) 100%) }
+.fx-top{ position:absolute; left:0; right:0; top:0; height:130px; background:linear-gradient(180deg,rgba(0,0,0,.78),transparent) }
+.fx-bot{ position:absolute; left:0; right:0; bottom:0; height:210px; background:linear-gradient(0deg,rgba(0,0,0,.86),transparent) }
+.corner{ position:absolute; width:56px; height:56px; border:0 solid var(--accent); opacity:.8 }
+.corner.tl{ top:14px; left:14px; border-top-width:2px; border-left-width:2px; clip-path:polygon(0 0,100% 0,100% 12px,12px 12px,12px 100%,0 100%) }
+.corner.tr{ top:14px; right:14px; border-top-width:2px; border-right-width:2px; clip-path:polygon(0 0,100% 0,100% 100%,calc(100% - 12px) 100%,calc(100% - 12px) 12px,0 12px) }
+.corner.bl{ bottom:14px; left:14px; border-bottom-width:2px; border-left-width:2px; clip-path:polygon(0 0,12px 0,12px calc(100% - 12px),100% calc(100% - 12px),100% 100%,0 100%) }
+.corner.br{ bottom:14px; right:14px; border-bottom-width:2px; border-right-width:2px; clip-path:polygon(calc(100% - 12px) 0,100% 0,100% 100%,0 100%,0 calc(100% - 12px),calc(100% - 12px) calc(100% - 12px)) }
+
+/* ---------- UI shell ---------- */
+.ui{ position:absolute; inset:0; pointer-events:none; z-index:2 }
+.ui a,.ui button,.ui li{ pointer-events:auto }
+.sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+
+/* ---------- NAV ---------- */
+.nav{ position:absolute; top:clamp(20px,4vh,34px); left:var(--pad-x); right:var(--pad-x); display:flex; align-items:center; justify-content:space-between }
+.logo{ display:flex; align-items:center; gap:10px; color:#fff; text-decoration:none; font-size:16px; letter-spacing:.03em }
+.logo-mark{ position:relative; width:26px; height:30px; background:linear-gradient(160deg,var(--gold),var(--gold-d)); clip-path:polygon(50% 0,100% 26%,100% 74%,50% 100%,0 74%,0 26%) }
+.logo-mark::after{ content:''; position:absolute; inset:5px; background:#07060a; clip-path:polygon(50% 0,100% 26%,100% 74%,50% 100%,0 74%,0 26%) }
+.logo-mark::before{ content:''; position:absolute; inset:11px; background:var(--accent); clip-path:polygon(50% 0,100% 60%,50% 100%,0 60%); z-index:1 }
+.logo b{ font-weight:900 }
+.logo span{ font-weight:400; opacity:.66; font-size:11px; letter-spacing:.2em }
+.nav-links{ display:flex; gap:clamp(14px,2.8vw,40px); list-style:none; margin:0; padding:0 }
+.nav-links a{ color:#f3ece0; text-decoration:none; font-size:14px; font-weight:500; position:relative; letter-spacing:.06em }
+.nav-links a::after{ content:''; position:absolute; left:0; right:0; bottom:-6px; height:1px; background:var(--accent); transform:scaleX(0); transform-origin:right; transition:transform .35s ease }
+.nav-links a:hover::after{ transform:scaleX(1); transform-origin:left }
+
+/* ---------- top strip ---------- */
+.status{ position:absolute; top:calc(clamp(20px,4vh,34px) + 50px); left:50%; transform:translateX(-50%); display:flex; gap:8px }
+.cell{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 15px 6px; background:rgba(255,222,160,.06); border:1px solid rgba(255,222,160,.14); clip-path:var(--tac); min-width:88px }
+.cell em{ font-style:normal; font-size:9px; letter-spacing:.2em; opacity:.6 }
+.cell b{ font-family:'Orbitron',sans-serif; font-size:18px; font-weight:700; color:var(--accent) }
+
+/* ---------- quality ladder (left top) ---------- */
+.ladder{ position:absolute; left:var(--pad-x); top:20.5%; width:158px }
+.ladder h3,.dossier h3,.shelf h3{ margin:0 0 8px; font-size:9px; font-weight:500; letter-spacing:.26em; opacity:.55 }
+.tier{ display:flex; align-items:center; gap:8px; padding:3px 0 3px 9px; border-left:2px solid rgba(255,255,255,.12); font-size:11px; opacity:.42 }
+.tier i{ width:5px; height:5px; background:currentColor; transform:rotate(45deg) }
+.tier.top{ opacity:1; border-left-color:var(--accent); color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.16em; background:linear-gradient(90deg,rgba(255,179,0,.14),transparent) }
+.rule{ margin-top:12px; padding-top:10px; border-top:1px dashed rgba(255,255,255,.16); font-size:10px; line-height:1.75; opacity:.5 }
+
+/* ---------- dossier (right, featured weapon spec) ---------- */
+.dossier{ position:absolute; right:var(--pad-x); top:20.5%; width:clamp(178px,16vw,236px) }
+.spec{ padding:9px 11px; margin-bottom:6px; background:rgba(255,222,160,.05); border-right:2px solid var(--accent) }
+.spec em{ display:block; font-style:normal; font-size:9px; letter-spacing:.2em; opacity:.55; margin-bottom:3px }
+.spec b{ font-size:12px; font-weight:500; line-height:1.5; color:#fff }
+.spec.grade b{ font-family:'Orbitron',sans-serif; font-size:19px; color:var(--accent); letter-spacing:.06em }
+.spec .miss{ color:var(--red) }
+.spec .pn{ display:block; font-style:normal; font-size:10px; opacity:.6; font-family:'Noto Sans SC',sans-serif; letter-spacing:.04em; margin-top:2px }
+
+/* purchase buttons */
+.buy{ display:flex; align-items:center; justify-content:center; gap:6px; height:38px; padding:1px; margin-top:2px;
+  background:linear-gradient(150deg,var(--accent),rgba(255,255,255,.32)); clip-path:var(--tac); text-decoration:none; cursor:pointer }
+.buy > span{ display:flex; align-items:center; gap:6px; width:100%; height:100%; justify-content:center;
+  background:#07060a; clip-path:var(--tac); color:var(--accent); font-size:13px; font-weight:700; letter-spacing:.1em; transition:background .25s, color .25s }
+.buy:hover > span{ background:var(--accent); color:#07060a }
+.buy.off > span{ color:#8b8577 }
+.buy svg{ width:14px; height:14px }
+
+.toast{ position:absolute; left:50%; bottom:calc(clamp(120px,18vh,186px) - 18px); transform:translate(-50%,10px);
+  z-index:4; max-width:min(520px,80vw); padding:9px 15px; pointer-events:none; opacity:0;
+  background:rgba(12,9,6,.94); border:1px solid var(--accent); color:#f6ecd8; font-size:11px; line-height:1.7;
+  letter-spacing:.03em; clip-path:var(--tac); transition:opacity .3s, transform .3s }
+.toast.show{ opacity:1; transform:translate(-50%,0) }
+.toast b{ color:var(--accent); font-weight:700 }
+
+/* ---------- order modal ---------- */
+.modal{ position:absolute; inset:0; z-index:6; display:none; place-items:center; padding:18px; pointer-events:auto;
+  background:rgba(3,2,4,.76); backdrop-filter:blur(3px) }
+.modal.open{ display:grid }
+.order{ pointer-events:auto; position:relative; width:min(430px,94vw); max-height:92%; overflow-y:auto;
+  padding:20px 20px 18px; background:linear-gradient(165deg,#141019,#0a080c 70%);
+  border:1px solid rgba(255,222,160,.22); clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+  box-shadow:0 30px 80px rgba(0,0,0,.7) }
+.order h2{ margin:0 0 2px; font-size:15px; font-weight:900; letter-spacing:.12em; color:#fff }
+.order .sub{ margin:0 0 14px; font-size:9px; letter-spacing:.26em; opacity:.5 }
+.order-x{ position:absolute; right:12px; top:10px; width:28px; height:28px; border:1px solid rgba(255,255,255,.22);
+  background:transparent; color:#f3ece0; font-size:15px; line-height:1; cursor:pointer }
+.order-x:hover{ border-color:var(--accent); color:var(--accent) }
+.pick{ padding:9px 11px; margin-bottom:13px; background:rgba(255,222,160,.06); border-left:2px solid var(--accent) }
+.pick .nm{ font-size:14px; font-weight:700; color:#fff }
+.pick .mt{ display:flex; justify-content:space-between; gap:8px; margin-top:4px; font-size:10px; opacity:.62 }
+.field{ margin-bottom:11px }
+.field label{ display:block; font-size:10px; letter-spacing:.18em; opacity:.6; margin-bottom:5px }
+.field label i{ font-style:normal; color:var(--red) }
+.field input,.field select{ width:100%; height:40px; padding:0 11px; background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.18); color:#fff; font-family:inherit; font-size:13px; outline:none; transition:border-color .2s }
+.field select{ appearance:none; padding-right:30px; cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--accent) 50%),linear-gradient(135deg,var(--accent) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 17px,calc(100% - 10px) 17px; background-size:5px 5px; background-repeat:no-repeat }
+.field select option{ background:#12100e; color:#f3ece0 }
+.field input:focus,.field select:focus{ border-color:var(--accent) }
+.field .err{ display:none; margin-top:4px; font-size:10px; color:var(--red) }
+.field.bad input,.field.bad select{ border-color:var(--red) }
+.field.bad .err{ display:block }
+
+/* quantity stepper */
+.qty{ display:flex; align-items:stretch; height:40px }
+.qbtn{ flex:none; width:42px; background:rgba(255,222,160,.08); border:1px solid rgba(255,255,255,.18);
+  color:var(--accent); font-size:17px; line-height:1; cursor:pointer; transition:background .2s, color .2s }
+.qbtn:first-child{ border-right:0 }
+.qbtn:last-child{ border-left:0 }
+.qbtn:hover{ background:var(--accent); color:#07060a }
+.qbtn:active{ transform:translateY(1px) }
+.qnum{ flex:1; min-width:0; height:40px; text-align:center; font-family:'Orbitron',sans-serif;
+  font-size:15px; letter-spacing:.06em }
+.total{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-top:7px; font-size:10px; opacity:.72 }
+.total b{ font-family:'Orbitron',sans-serif; font-size:14px; color:var(--accent); letter-spacing:.03em }
+.total span{ font-size:9px; opacity:.7 }
+.pay{ display:block; width:100%; height:48px; margin-top:6px; padding:1px; border:0;
+  background:linear-gradient(150deg,var(--accent),rgba(255,255,255,.32)); clip-path:var(--tac); cursor:pointer }
+.pay > span{ display:grid; place-items:center; width:100%; height:100%; background:#07060a; clip-path:var(--tac);
+  color:var(--accent); font-size:15px; font-weight:900; letter-spacing:.16em; transition:background .25s, color .25s }
+.pay:hover > span{ background:var(--accent); color:#07060a }
+.pay:disabled{ cursor:not-allowed }
+.pay:disabled > span{ color:#7d7768; background:#0d0b0e }
+.pay-hint{ margin-top:9px; font-size:9px; line-height:1.8; opacity:.5 }
+
+.paid{ text-align:center; padding-top:4px }
+.paid .tick{ display:grid; place-items:center; width:44px; height:44px; margin:2px auto 10px;
+  border:1px solid var(--accent); color:var(--accent); font-size:20px; clip-path:polygon(50% 0,100% 26%,100% 74%,50% 100%,0 74%,0 26%) }
+.paid h3{ margin:0 0 12px; font-size:14px; font-weight:900; letter-spacing:.14em; color:#fff }
+.paid dl{ display:grid; grid-template-columns:auto 1fr; gap:6px 12px; margin:0 0 14px; text-align:left; font-size:11px }
+.paid dt{ opacity:.55; letter-spacing:.1em }
+.paid dd{ margin:0; color:#fff; word-break:break-all }
+.paid dd#rAmount{ color:var(--accent); font-family:'Orbitron',sans-serif }
+.order.done .pick,.order.done .field,.order.done .pay-hint,.order.done #payBtn{ display:none }
+
+/* ---------- shelf list (right bottom) ---------- */
+.shelf{ position:absolute; right:var(--pad-x); bottom:calc(clamp(150px,20vh,206px) + 14px); width:clamp(178px,16vw,236px) }
+.shelf ul{ list-style:none; margin:0; padding:0; max-height:min(34vh,268px); overflow-y:auto; scrollbar-width:thin }
+.shelf li{ display:flex; align-items:baseline; justify-content:space-between; gap:7px; padding:3px 0; border-bottom:1px dashed rgba(255,255,255,.1); font-size:10px; cursor:pointer; opacity:.62; transition:opacity .2s, color .2s }
+.shelf li:hover{ opacity:1 }
+.shelf li.on{ opacity:1; color:var(--accent) }
+.shelf li s{ text-decoration:none; font-family:'Orbitron',sans-serif; font-size:10px; letter-spacing:.02em; white-space:nowrap }
+.shelf li.on s{ color:var(--accent) }
+
+/* ---------- arrows ---------- */
+.arrows{ position:absolute; right:calc(var(--pad-x) + clamp(190px,17vw,250px)); top:49.4%; transform:translateY(-50%); display:flex; gap:12px }
+.arrow{ width:38px; height:38px; border:0; padding:1px; background:linear-gradient(150deg,var(--accent),rgba(255,255,255,.22)); clip-path:var(--tac); color:#07060a; display:grid; place-items:center; cursor:pointer; transition:transform .2s }
+.arrow > i{ display:grid; place-items:center; width:100%; height:100%; background:#07060a; clip-path:var(--tac); color:var(--accent); transition:background .25s, color .25s }
+.arrow svg{ width:17px; height:17px }
+.arrow:hover > i{ background:var(--accent); color:#07060a }
+.arrow:active{ transform:translateY(1px) }
+
+/* ---------- weapon selector (dots) ---------- */
+.dots{ position:absolute; right:calc(var(--pad-x) - 4px); top:49.4%; transform:translateY(-50%); display:flex; flex-direction:column; gap:15px }
+.dot{ width:16px; height:16px; border:0; padding:1px; background:linear-gradient(150deg,var(--accent),rgba(255,255,255,.25)); clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); cursor:pointer }
+.dot > i{ display:block; width:100%; height:100%; background:#f3ece0; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); transition:background .25s }
+.dot.active > i{ background:transparent }
+
+/* ---------- acquisition chips (left bottom) ---------- */
+.kicker{ position:absolute; left:var(--pad-x); bottom:calc(clamp(120px,18vh,186px) + 104px); font-size:9px; letter-spacing:.32em; opacity:.55 }
+.ways{ position:absolute; left:var(--pad-x); bottom:calc(clamp(120px,18vh,186px) + 62px); display:flex; flex-wrap:wrap; gap:6px; width:min(340px,44vw) }
+.way{ font-size:10px; padding:4px 9px; background:rgba(255,222,160,.07); border:1px solid rgba(255,222,160,.18); letter-spacing:.06em }
+.way.strong{ border-color:var(--accent); color:var(--accent) }
+.tagline{ position:absolute; left:var(--pad-x); bottom:clamp(40px,7vh,68px); font-size:clamp(21px,2.4vw,40px); line-height:1.22; font-weight:400; margin:0 }
+.tagline strong{ font-weight:900; display:block; color:#fff }
+.tagline strong u{ text-decoration:none; color:var(--accent) }
+
+/* ---------- price row ---------- */
+.cta-row{ position:absolute; left:44%; right:-1vw; top:88.5%; transform:translateY(-50%); display:flex; align-items:center }
+.cta{ flex:none; height:48px; padding:1px; border:0; background:linear-gradient(150deg,var(--accent),rgba(255,255,255,.3)); clip-path:var(--tac); text-decoration:none; cursor:pointer; display:inline-flex; transition:filter .25s }
+.cta > span{ display:inline-flex; align-items:center; gap:7px; padding:0 18px; background:#07060a; clip-path:var(--tac); color:var(--accent); font-size:14px; font-weight:700; letter-spacing:.08em; transition:background .25s, color .25s }
+.cta:hover > span{ background:var(--accent); color:#07060a }
+.cta-line{ flex:1; height:2px; min-width:30px; background:repeating-linear-gradient(90deg,var(--accent) 0 10px,transparent 10px 18px); opacity:.65 }
+.count{ flex:none; font-family:'Orbitron',sans-serif; font-size:clamp(104px,15vw,258px); font-weight:800; line-height:1; letter-spacing:-.02em; color:transparent; -webkit-text-stroke:1.5px rgba(255,255,255,.82); transform:translateY(6%); user-select:none }
+.rmb{ flex:none; align-self:flex-end; margin:0 4px 12px -4px; font-family:'Orbitron',sans-serif; font-size:clamp(18px,2.2vw,34px); font-weight:700; color:var(--accent); opacity:.9 }
+.pricetag{ position:absolute; right:calc(var(--pad-x) + 2px); bottom:14px; font-size:9px; letter-spacing:.14em; opacity:.5; text-align:right; line-height:1.7 }
+
+/* ---------- disclaimer ---------- */
+.notice{ position:absolute; left:var(--pad-x); right:var(--pad-x); bottom:2px; display:flex; justify-content:space-between; gap:14px; font-size:9px; letter-spacing:.04em; opacity:.34; pointer-events:none }
+
+/* ---------- loader ---------- */
+.loader{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:12px; letter-spacing:.24em; opacity:.65; transition:opacity .6s; z-index:3 }
+.loader.done{ opacity:0 }
+
+/* ---------- responsive ---------- */
+@media (max-width:1180px){
+  .shelf{ display:none }
+  .arrows{ right:calc(var(--pad-x) + 46px) }
+}
+@media (max-width:900px), (max-aspect-ratio:1/1){
+  .ladder{ display:none }
+  .status{ top:calc(clamp(20px,4vh,34px) + 44px) }
+  .cell{ min-width:74px; padding:4px 10px 5px }
+  .cell b{ font-size:15px }
+  .dossier{ top:auto; bottom:calc(clamp(150px,21vh,210px) + 12px); width:clamp(160px,44vw,200px) }
+  .arrows{ left:auto; right:var(--pad-x); top:16.5%; transform:translateY(-50%); gap:10px }
+  .dots{ top:22.5% }
+  .tagline{ bottom:clamp(150px,21vh,206px) }
+  .ways{ bottom:calc(clamp(150px,21vh,206px) + 96px); width:min(300px,64vw) }
+  .kicker{ bottom:calc(clamp(150px,21vh,206px) + 132px) }
+  .cta-row{ left:var(--pad-x); right:-3vw; top:auto; bottom:26px; transform:none }
+  .count{ font-size:clamp(96px,21vw,168px) }
+  .notice{ display:none }
+}
+@media (max-width:640px){
+  .nav-links{ gap:14px }
+  .nav-links a,.logo{ font-size:12px }
+  .logo span{ display:none }
+  .dots{ gap:12px; right:14px }
+  .dot{ width:12px; height:12px }
+  .dossier{ display:none }
+  .cta-row{ right:-7vw }
+  .count{ font-size:clamp(84px,23vw,124px) }
+  .ways{ display:none }
+}
+@media (max-width:420px){
+  .nav-links li:nth-child(2){ display:none }
+  .status .cell:nth-child(3){ display:none }
+  .status{ gap:6px }
+  .cell{ min-width:66px }
+}
+</style>
+</head>
+<body>
+<section class="hero" id="hero">
+  <canvas id="scene" aria-label="可旋转的传世武装陈列柜，拖拽可旋转"></canvas>
+
+  <div class="fx" aria-hidden="true">
+    <div class="fx-rays"></div>
+    <div class="fx-grid"></div>
+    <div class="fx-scan"></div>
+    <div class="fx-sweep"></div>
+    <div class="fx-vig"></div>
+    <div class="fx-top"></div>
+    <div class="fx-bot"></div>
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+  </div>
+
+  <div class="ui">
+    <h1 class="sr-only">和平精英地铁逃生传世武装陈列馆</h1>
+
+    <header class="nav">
+      <a href="#" class="logo"><i class="logo-mark"></i><b>传世军械库</b><span>HEIRLOOM</span></a>
+      <ul class="nav-links">
+        <li><a href="#">传世武装</a></li>
+        <li><a href="#">品质图鉴</a></li>
+        <li><a href="#">行情公告</a></li>
+      </ul>
+    </header>
+
+    <div class="status" aria-hidden="true">
+      <div class="cell"><em>在列武装</em><b class="num" id="statCount">14</b></div>
+      <div class="cell"><em>当前赛季</em><b class="num" id="statSeason">SS41</b></div>
+      <div class="cell"><em>赛季截止</em><b class="num" id="statEnd">11.14</b></div>
+      <div class="cell"><em>品质档</em><b class="num">传世</b></div>
+    </div>
+
+    <div class="ladder" aria-hidden="true">
+      <h3>QUALITY 武器品质阶梯</h3>
+      <div class="tier"><i></i>破损</div>
+      <div class="tier"><i></i>修复</div>
+      <div class="tier"><i></i>完好</div>
+      <div class="tier"><i></i>改进</div>
+      <div class="tier"><i></i>精制</div>
+      <div class="tier"><i></i>卓越</div>
+      <div class="tier top"><i></i>传世</div>
+      <p class="rule">传世为地铁逃生模式最高一档。官方赛季结束预告：除传世武装、传世手枪等可跨赛季物资外，地铁币等物资将被清空。</p>
+    </div>
+
+    <div class="dossier">
+      <h3>DOSSIER 武装档案</h3>
+      <div class="spec grade"><em>参考行情 / 元</em><b id="dPrice">999<span class="pn">第三方参考价 · 非官方定价</span></b></div>
+      <div class="spec"><em>专属词条</em><b id="dEffect">手持移速 +5% · 初代传世</b></div>
+      <div class="spec"><em>获取途径</em><b id="dSource">首领掉落 · 狂火·维列（CH.1 后绝版）</b></div>
+      <div class="spec"><em>上线批次</em><b id="dBatch">CH.0-CH.1</b></div>
+      <div class="spec"><em>批次说明</em><b id="dNote">第一款传世武装</b></div>
+      <a href="#" class="buy" id="buyCard"><span>购买此武装</span></a>
+    </div>
+
+    <div class="shelf">
+      <h3>SHELF 在列武装</h3>
+      <ul id="shelfList"></ul>
+    </div>
+
+    <div class="arrows">
+      <button class="arrow" id="prev" type="button" aria-label="上一件">
+        <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></i>
+      </button>
+      <button class="arrow" id="next" type="button" aria-label="下一件">
+        <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i>
+      </button>
+    </div>
+
+    <nav class="dots" id="dots" aria-label="切换陈列武装"></nav>
+
+    <p class="kicker" id="kicker">HEIRLOOM ARSENAL · 传世武装</p>
+    <p class="tagline">最高一档品质<br><strong>可跨赛季<u>保留</u>。</strong></p>
+
+    <div class="cta-row">
+      <a href="#" class="cta" id="buyMain"><span>立即购买</span></a>
+      <span class="cta-line"></span>
+      <span class="rmb num" id="rmbSign" aria-hidden="true">¥</span>
+      <span class="count num" id="countNum" aria-hidden="true">2999</span>
+    </div>
+    <div class="pricetag" aria-hidden="true">第三方市场参考价<br>非官方定价 · 以游戏内公示为准</div>
+
+    <div class="notice" aria-hidden="true">
+      <span>传世武装无官方现金直售渠道，本站仅作品质与行情陈列</span>
+      <span>非官方渠道交易存在封号与诈骗风险</span>
+    </div>
+
+    <div class="loader" id="loader">正在开启陈列柜</div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="orderTitle">
+      <form class="order" id="orderForm" novalidate>
+        <button class="order-x" id="orderClose" type="button" aria-label="关闭">×</button>
+        <h2 id="orderTitle">确认下单信息</h2>
+        <p class="sub">HEIRLOOM ARSENAL · ORDER</p>
+
+        <div class="pick">
+          <div class="nm" id="oName">—</div>
+          <div class="mt"><span id="oBatch">—</span><span id="oPrice">—</span></div>
+        </div>
+
+        <div class="field" id="fId">
+          <label for="inId">游戏ID <i>*</i></label>
+          <input id="inId" name="gameId" type="text" maxlength="24" autocomplete="off" placeholder="请输入角色昵称 / 游戏ID">
+          <span class="err">请填写游戏ID</span>
+        </div>
+
+        <div class="field" id="fUid">
+          <label for="inUid">UID <i>*</i></label>
+          <input id="inUid" name="uid" type="text" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="仅数字，6–20 位">
+          <span class="err" id="eUid">请填写正确的 UID（6–20 位数字）</span>
+        </div>
+
+        <div class="field" id="fRegion">
+          <label for="inRegion">游戏大区 <i>*</i></label>
+          <select id="inRegion" name="region">
+            <option value="">请选择游戏大区</option>
+            <option value="安卓QQ">安卓 QQ 区</option>
+            <option value="安卓微信">安卓 微信区</option>
+            <option value="苹果QQ">苹果 QQ 区</option>
+            <option value="苹果微信">苹果 微信区</option>
+          </select>
+          <span class="err">请选择游戏大区</span>
+        </div>
+
+        <div class="field" id="fQty">
+          <label>购买数量 <i>*</i></label>
+          <div class="qty">
+            <button class="qbtn" id="qtyMinus" type="button" aria-label="减少数量">−</button>
+            <input class="qnum" id="inQty" type="text" inputmode="numeric" value="1" aria-label="购买数量">
+            <button class="qbtn" id="qtyPlus" type="button" aria-label="增加数量">＋</button>
+          </div>
+          <div class="total">参考合计 <b id="oTotal">—</b><span id="oCalc"></span></div>
+          <span class="err">数量需为 1–99 之间的整数</span>
+        </div>
+
+        <button class="pay" id="payBtn" type="submit"><span id="payLabel">付款</span></button>
+        <p class="pay-hint">付款前请再次核对游戏ID、UID、大区与数量，填写错误将无法发货。本站为演示页面，未接入真实支付；传世武装无官方现金直售渠道，非官方交易存在封号与诈骗风险。</p>
+
+        <div class="paid" id="paidPanel" hidden>
+          <div class="tick">✓</div>
+          <h3>下单已提交</h3>
+          <dl>
+            <dt>武装</dt><dd id="rName">—</dd>
+            <dt>游戏ID</dt><dd id="rId">—</dd>
+            <dt>UID</dt><dd id="rUid">—</dd>
+            <dt>大区</dt><dd id="rRegion">—</dd>
+            <dt>数量</dt><dd id="rQty">—</dd>
+            <dt>金额</dt><dd id="rAmount">—</dd>
+          </dl>
+          <button class="pay" id="againBtn" type="button"><span>继续浏览</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+/* ============================== config ============================== */
+const MODEL_URL = 'https://motionsites.org/assets/prompt-media/fa96096e78c8153a70d2.glb';
+const HEAD_FONT = "900 %FS% 'Noto Sans SC', sans-serif";
+const CAM_Z = 10;
+const FOV = 30;
+
+/* 排序依据：用户提供的地铁逃生传世武装【上线顺序】CH.0 → CH.15（本轮输入优先）
+   词条 / 掉落 / 行情 取自官方赛季与版本公告、官方知识库、电竞俱乐部与回收商报价（第三方参考，非官方）
+   price:null = 暂未获取公开参考价；n = 该批次包含的武装件数 */
+const ARSENAL = [
+  { lines: ['火焰刀', '维列', 'CH.0-1'], batch: 'CH.0-CH.1', rank: 'T1', n: 1, tint: 0xff8a3d,
+    note: '第一款传世武装',
+    effect: '手持移速 +5% · 初代传世', src: '首领掉落 · 狂火·维列（CH.1 后绝版）', price: [999, 1399] },
+  { lines: ['蝴蝶刀', '冷锋', 'CH.2-3'], batch: 'CH.2-CH.3', rank: 'T0', n: 1, tint: 0x9ecbff,
+    note: 'PVE 速刷效率断层第一',
+    effect: '对非玩家目标伤害 +300%（身体13 / 头部24）', src: '多地图首领掉落，爆率较高', price: [888, 1399] },
+  { lines: ['双截棍', '神龙', 'CH.4-5'], batch: 'CH.4-CH.5', rank: 'T2', n: 1, tint: 0xffd24a,
+    note: '蛇年限定 · 保值款',
+    effect: '倒地血量小幅提升 · 攻击范围大', src: '首领掉落 · 智械阁主·赤炎 / 智造体·魁', price: [2888, 3999] },
+  { lines: ['机械拳套', '破风', 'CH.6-7'], batch: 'CH.6-CH.7', rank: 'T2', n: 1, tint: 0xb8c2cc,
+    note: '外观评价两极',
+    effect: '蓄力后可冲刺一小段距离', src: '首领掉落 · 哈顿中将 / 托雷斯·怀特', price: [1288, 1699] },
+  { lines: ['弗拉迪', '尾刺', 'CH.6起'], batch: 'CH.6 起同步上线', rank: 'T1', n: 1, tint: 0xc77dff,
+    note: '每赛季持续产出，不绝版',
+    effect: '穿刺类 · 紫电特效与破甲能力', src: '首领掉落 · 掌控者·弗拉迪', price: [1099, 1688] },
+  { lines: ['苏尔南', '暗潮', 'CH.7'], batch: 'CH.7 夏日焕新', rank: 'P', n: 1, tint: 0xffe08a,
+    note: '首把传世手枪 · 纯金镶宝石',
+    effect: '连续命中短暂麻痹 · 无法开镜与换弹', src: '苏尔南钻打造 · CH.10 后下架打造池', price: [399, 1299] },
+  { lines: ['战镰', '碎刃', 'CH.8-9'], batch: 'CH.8-CH.9', rank: 'T2', n: 1, tint: 0xb0c4a8,
+    note: '背身压迫感最强',
+    effect: '受击状态增加能量', src: '首领掉落 · 托雷斯·怀特 / 智造体·魁等', price: [1299, 1799] },
+  { lines: ['熔岩双刃', '魔龙双刃', 'CH.10'], batch: 'CH.10', rank: 'T0 / T2', n: 2, tint: 0xff5a45,
+    note: '双传世同批更新',
+    effect: '熔岩：倒地免疫燃烧与爆炸 / 魔龙：必掉两把可收藏', src: '熔岩 · 卡德尔少将等 / 魔龙 · 渊心魔龙',
+    price: [2100, 3999], priceNote: '熔岩双刃 2999–3999｜魔龙双刃 2100–2500' },
+  { lines: ['云舟', '机关扇', 'CH.11'], batch: 'CH.11', rank: 'T2', n: 1, tint: 0x7fd6c9,
+    note: '刷取难度高，无专属词条',
+    effect: '无专属词条 · 以检视与外观为主', src: '首领掉落 · 云舟少主（亲卫 10 杀）',
+    price: [1600, 1600], priceNote: '回收商白板基础价 1600 · ⚠️单源待校验' },
+  { lines: ['折叠直刀', '藏锋', 'CH.12'], batch: 'CH.12', rank: 'T2', n: 1, tint: 0xa8b6ff,
+    note: '可折叠 · 战术隐蔽特化',
+    effect: '无视脉冲手雷 · 规避生命探测仪', src: '卡德尔近战形态 · 极低概率掉落', price: [2600, 2999] },
+  { lines: ['审判者', '骨鞭', 'CH.13'], batch: 'CH.13', rank: 'EX', n: 1, tint: 0xcfa76f,
+    note: '市场公认最高价位',
+    effect: '审判之力 · 将异变怪物转化为临时局内伙伴', src: '首领掉落 · 审判者·瓦伦（永久掉落）',
+    price: [3999, 8888], priceNote: '俱乐部在售 3999｜回收基础价 8888（口径不同）' },
+  { lines: ['贯日长枪', '钩月画戟', 'CH.14-15'], batch: 'CH.14-CH.15', rank: '新档', n: 2, tint: 0xffb300,
+    note: '最新双传世 · 地铁古墓互通',
+    effect: '贯日：持枪疾驰移速增加 / 钩月：古墓「孤猎」对怪物大幅增伤',
+    src: '贯日 · 击败五大首领极低概率 / 钩月 · 渊心魔龙、长生王', price: null, priceNote: '上线未久，暂无公开参考价' }
+];
+
+const canvas = document.getElementById('scene');
+const loaderEl = document.getElementById('loader');
+
+let W = 0, H = 0, DPR = 1, mobile = false;
+let slide = 0;
+
+/* ==================== background headline canvas ==================== */
+const bgCanvas = document.createElement('canvas');
+const bctx = bgCanvas.getContext('2d');
+
+const bgTexture = new THREE.CanvasTexture(bgCanvas);
+bgTexture.colorSpace = THREE.SRGBColorSpace;
+bgTexture.minFilter = THREE.LinearFilter;
+bgTexture.magFilter = THREE.LinearFilter;
+bgTexture.generateMipmaps = false;
+
+function drawHeadline() {
+  if (!W || !H) return;
+  bgCanvas.width = Math.round(W * DPR);
+  bgCanvas.height = Math.round(H * DPR);
+
+  const ctx = bctx, L = ARSENAL[slide].lines;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#07060a';
+  ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+  const maxW = bgCanvas.width * (mobile ? 0.88 : 0.46);
+  let fs = Math.min(bgCanvas.height * 0.2, bgCanvas.width * (mobile ? 0.2 : 0.112));
+  const font = (size) => `900 ${size}px 'Noto Sans SC', sans-serif`;
+  ctx.font = font(fs);
+  let widest = 0;
+  for (const s of L) widest = Math.max(widest, ctx.measureText(s).width);
+  if (widest > maxW) fs = fs * (maxW / widest);
+
+  ctx.font = font(fs);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  const cx = bgCanvas.width * (mobile ? 0.5 : 0.5);
+  const cy = bgCanvas.height * (mobile ? 0.44 : 0.462);
+  const gap = fs * 1.06;
+  const cap = fs * 0.7;
+
+  for (let i = 0; i < L.length; i++) {
+    const y = cy + cap / 2 + (i - 1) * gap;
+    ctx.fillStyle = 'rgba(0,0,0,.9)';
+    ctx.fillText(L[i], cx + fs * 0.024, y + fs * 0.024);
+    ctx.fillStyle = i === L.length - 1 ? '#b9a682' : '#e6dcc8';
+    ctx.fillText(L[i], cx, y);
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = '#ffd24a';
+    ctx.fillText(L[i], cx - fs * 0.009, y - fs * 0.009);
+    ctx.restore();
+  }
+
+  bgTexture.needsUpdate = true;
+}
+
+document.fonts && document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', drawHeadline);
+
+/* ============================== renderer ============================== */
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setClearColor(new THREE.Color('#07060a'), 1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+camera.position.set(0, 0, CAM_Z);
+camera.lookAt(0, 0, 0);
+
+const bgMaterial = new THREE.ShaderMaterial({
+  uniforms: { uTex: { value: bgTexture }, uGlow: { value: new THREE.Color(0xffb300) } },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D uTex;
+    uniform vec3 uGlow;
+    varying vec2 vUv;
+    void main() {
+      vec3 c = texture2D(uTex, vUv).rgb;
+      float d = distance(vUv, vec2(0.5, 0.52));
+      c += uGlow * smoothstep(0.62, 0.0, d) * 0.055;
+      gl_FragColor = vec4(c, 1.0);
+      #include <colorspace_fragment>
+    }
+  `,
+  depthTest: false,
+  depthWrite: false,
+  toneMapped: false
+});
+
+const quadGeo = new THREE.PlaneGeometry(2, 2);
+
+const bgScene = new THREE.Scene();
+const bgQuadRt = new THREE.Mesh(quadGeo, bgMaterial);
+bgQuadRt.frustumCulled = false;
+bgQuadRt.renderOrder = -2;
+bgScene.add(bgQuadRt);
+
+const scene = new THREE.Scene();
+const bgQuad = new THREE.Mesh(quadGeo, bgMaterial);
+bgQuad.frustumCulled = false;
+bgQuad.renderOrder = -2;
+scene.add(bgQuad);
+
+const rt = new THREE.WebGLRenderTarget(2, 2, {
+  minFilter: THREE.LinearFilter,
+  magFilter: THREE.LinearFilter,
+  format: THREE.RGBAFormat,
+  generateMipmaps: false
+});
+rt.texture.colorSpace = THREE.LinearSRGBColorSpace;
+
+/* ---------- display-case glass: refraction + chromatic dispersion ---------- */
+const cubeUniforms = {
+  uTex: { value: rt.texture },
+  uProj: { value: camera.projectionMatrix },
+  uCenter: { value: new THREE.Vector2(0, 0) },
+  uHalf: { value: new THREE.Vector2(0.19, 0.19) },
+  uLens: { value: 1.06 },
+  uDisp: { value: 0.07 },
+  uBend: { value: 1.0 },
+  uTint: { value: new THREE.Color(1.0, 0.76, 0.34) },
+  uRim: { value: 1.05 },
+  uPass: { value: 0 }
+};
+
+const cubeShader = {
+  vertexShader: `
+    varying vec3 vWorldPos;
+    varying vec3 vWorldNormal;
+    void main() {
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWorldPos = wp.xyz;
+      vWorldNormal = normalize(mat3(modelMatrix) * normal);
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D uTex;
+    uniform mat4 uProj;
+    uniform vec2 uCenter;
+    uniform vec2 uHalf;
+    uniform float uLens;
+    uniform float uDisp;
+    uniform float uBend;
+    uniform vec3  uTint;
+    uniform float uRim;
+    uniform float uPass;
+
+    varying vec3 vWorldPos;
+    varying vec3 vWorldNormal;
+
+    vec2 bendOffset(vec3 V, vec3 N, float eta) {
+      vec3 R = refract(V, N, eta);
+      if (dot(R, R) < 1e-8) R = reflect(V, N);
+      vec4 clip = uProj * viewMatrix * vec4(R, 0.0);
+      vec2 off = clip.xy / max(abs(clip.w), 1e-5);
+      return off * uBend;
+    }
+
+    void main() {
+      vec3 N = normalize(vWorldNormal);
+      if (uPass > 0.5) N = -N;
+      vec3 V = normalize(vWorldPos - cameraPosition);
+
+      vec4 cp = uProj * viewMatrix * vec4(vWorldPos, 1.0);
+      vec2 ndc = cp.xy / max(abs(cp.w), 1e-5);
+      vec2 q = (ndc - uCenter) / max(uHalf, vec2(1e-4));
+      float edge = smoothstep(0.55, 1.0, length(q));
+
+      float d = uDisp;
+      vec2 oR = bendOffset(V, N, 1.0 / (1.545 + d * 3.0));
+      vec2 oG = bendOffset(V, N, 1.0 / 1.485);
+      vec2 oB = bendOffset(V, N, 1.0 / (1.425 - d * 3.0));
+
+      vec2 base = uCenter - q * uHalf * uLens;
+      vec2 amp = uHalf * uBend;
+
+      vec3 refr;
+      refr.r = texture2D(uTex, clamp(0.5 + 0.5 * (base + oR * amp), vec2(0.001), vec2(0.999))).r;
+      refr.g = texture2D(uTex, clamp(0.5 + 0.5 * (base + oG * amp), vec2(0.001), vec2(0.999))).g;
+      refr.b = texture2D(uTex, clamp(0.5 + 0.5 * (base + oB * amp), vec2(0.001), vec2(0.999))).b;
+
+      float facing = clamp(dot(-V, N), 0.0, 1.0);
+      float fres = pow(1.0 - facing, 3.0);
+
+      vec3 col = refr * uTint;
+      col *= 1.0 - 0.46 * edge;
+      col += fres * uRim * uTint * (uPass > 0.5 ? 0.4 : 1.0);
+
+      vec3 L = normalize(vec3(0.3, 0.92, 0.72));
+      float spec = pow(max(dot(N, normalize(L - V)), 0.0), 46.0);
+      col += spec * vec3(1.0, 0.94, 0.82) * (uPass > 0.5 ? 0.12 : 0.75);
+
+      col *= mix(1.0, 0.15, step(0.5, uPass));
+
+      gl_FragColor = vec4(col, mix(0.8, 1.0, step(0.5, uPass)));
+      #include <colorspace_fragment>
+    }
+  `
+};
+
+const cubeMaterialFront = new THREE.ShaderMaterial({
+  uniforms: cubeUniforms,
+  vertexShader: cubeShader.vertexShader,
+  fragmentShader: cubeShader.fragmentShader,
+  side: THREE.FrontSide,
+  transparent: true,
+  depthWrite: false
+});
+const cubeMaterialBack = new THREE.ShaderMaterial({
+  uniforms: Object.assign({}, cubeUniforms, { uPass: { value: 1 } }),
+  vertexShader: cubeShader.vertexShader,
+  fragmentShader: cubeShader.fragmentShader,
+  side: THREE.BackSide,
+  blending: THREE.AdditiveBlending,
+  depthTest: false,
+  depthWrite: false,
+  transparent: true
+});
+
+/* ---------- gilded pedestal cage + relic core ---------- */
+const cage = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+  new THREE.LineBasicMaterial({ color: new THREE.Color('#ffb300'), transparent: true, opacity: 0.92 })
+);
+const cageInner = new THREE.LineSegments(
+  cage.geometry,
+  new THREE.LineBasicMaterial({ color: new THREE.Color('#ffe6a8'), transparent: true, opacity: 0.42 })
+);
+cageInner.scale.setScalar(0.66);
+
+const core = new THREE.Mesh(
+  new THREE.OctahedronGeometry(0.24, 0),
+  new THREE.MeshStandardMaterial({ color: 0x1a1410, metalness: 0.85, roughness: 0.28,
+    emissive: new THREE.Color('#ffb300'), emissiveIntensity: 0.35 })
+);
+
+/* scene graph: scene -> pivot -> spinner -> [glass, cage, core] */
+const pivot = new THREE.Group();
+const spinner = new THREE.Group();
+pivot.add(spinner);
+scene.add(pivot);
+
+scene.add(new THREE.HemisphereLight(0xfff0d0, 0x150f0a, 1.15));
+const keyLight = new THREE.DirectionalLight(0xffd27a, 1.9);
+keyLight.position.set(2.2, 3, 4);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0xffb300, 1.1);
+rimLight.position.set(-3, -1.2, -2);
+scene.add(rimLight);
+
+let loaded = false;
+
+function finishLoad(obj) {
+  if (loaded) return;
+  loaded = true;
+  spinner.add(obj);
+  loaderEl.classList.add('done');
+}
+
+function fallbackGeometry() {
+  return new RoundedBoxGeometry(1, 1, 1, 8, 0.12);
+}
+
+function assemble(geo) {
+  const group = new THREE.Group();
+  const inner = new THREE.Mesh(geo, cubeMaterialBack);
+  inner.renderOrder = -1;
+  group.add(inner, new THREE.Mesh(geo, cubeMaterialFront), cage, cageInner, core);
+  return group;
+}
+
+/* ---------- model loading ---------- */
+new GLTFLoader().load(
+  MODEL_URL,
+  (gltf) => {
+    let geo = null;
+    try {
+      const parts = [];
+      gltf.scene.updateMatrixWorld(true);
+      gltf.scene.traverse((node) => {
+        if (!node.isMesh || !node.geometry) return;
+        const g = node.geometry.clone();
+        g.deleteAttribute('uv');
+        g.deleteAttribute('color');
+        g.deleteAttribute('tangent');
+        const merged = mergeVertices(g, 1e-4);
+        merged.computeVertexNormals();
+        merged.applyMatrix4(node.matrixWorld);
+        parts.push(merged);
+      });
+
+      if (parts.length > 1) geo = mergeGeometries(parts, false);
+      else if (parts.length === 1) geo = parts[0];
+
+      if (geo) {
+        geo.computeBoundingBox();
+        const c = new THREE.Vector3();
+        geo.boundingBox.getCenter(c);
+        geo.translate(-c.x, -c.y, -c.z);
+        const size = new THREE.Vector3();
+        geo.boundingBox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        geo.scale(1 / maxDim, 1 / maxDim, 1 / maxDim);
+      }
+    } catch (err) {
+      geo = null;
+    }
+
+    finishLoad(assemble(geo || fallbackGeometry()));
+  },
+  undefined,
+  () => {
+    finishLoad(assemble(fallbackGeometry()));
+  }
+);
+
+/* ---------- placement ---------- */
+let visH = 1, visW = 1;
+
+function layout() {
+  visH = 2 * Math.tan((FOV * Math.PI) / 180 / 2) * CAM_Z;
+  visW = visH * camera.aspect;
+
+  const sx = mobile ? 0.5 : 0.5;
+  const sy = mobile ? 0.44 : 0.462;
+  pivot.position.set((sx - 0.5) * visW, (0.5 - sy) * visH, 0);
+
+  const s = visH * (mobile ? 0.4 : 0.34);
+  pivot.scale.setScalar(s);
+
+  cubeUniforms.uCenter.value.set(pivot.position.x * 2 / visW, pivot.position.y * 2 / visH);
+  cubeUniforms.uHalf.value.set(Math.max(s / visW, 1e-4), Math.max(s / visH, 1e-4));
+  cubeUniforms.uLens.value = mobile ? 0.96 : 1.04;
+  cubeUniforms.uBend.value = mobile ? 0.6 : 0.48;
+}
+
+function resize() {
+  W = Math.max(1, window.innerWidth);
+  H = Math.max(1, window.innerHeight);
+  mobile = W < 768 || W / H < 1;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  renderer.setPixelRatio(DPR);
+  renderer.setSize(W, H, false);
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+
+  rt.setSize(Math.round(W * DPR), Math.round(H * DPR));
+  rt.texture.needsUpdate = true;
+
+  drawHeadline();
+  layout();
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
+
+/* ---------- selection + interaction ---------- */
+const dotWrap = document.getElementById('dots');
+const shelfList = document.getElementById('shelfList');
+const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+
+const money = (p) => (p ? p[0].toLocaleString('en-US') : '--');
+const range = (p) => (!p ? '暂未获取公开参考价'
+  : p[0] === p[1] ? p[0].toLocaleString('en-US') + '（单点报价）'
+  : p[0].toLocaleString('en-US') + '–' + p[1].toLocaleString('en-US'));
+
+ARSENAL.forEach((w, i) => {
+  const b = document.createElement('button');
+  b.className = 'dot';
+  b.type = 'button';
+  b.innerHTML = '<i></i>';
+  b.setAttribute('aria-label', '陈列 ' + (i + 1));
+  b.addEventListener('click', () => select(i));
+  dotWrap.appendChild(b);
+
+  const label = w.n > 1 ? w.lines[0] + '／' + w.lines[1] : w.lines[0] + (w.lines[1] ? '·' + w.lines[1] : '');
+  const li = document.createElement('li');
+  li.innerHTML = '<span>' + (i + 1) + '. ' + label + '</span>' +
+                 '<s>' + (w.price ? '¥' + money(w.price) : '待获取') + '</s>';
+  li.title = w.batch + ' · ' + (w.price ? '¥' + range(w.price) + ' 第三方参考价' : '暂未获取公开参考价');
+  li.addEventListener('click', () => select(i));
+  shelfList.appendChild(li);
+});
+
+const dotEls = Array.from(dotWrap.children);
+const liEls = Array.from(shelfList.children);
+
+let dragging = false;
+let lastX = 0, lastY = 0;
+let velX = 0, velY = 0;
+let rotX = -0.26, rotY = 0.62;
+let now = 0, lastInteract = -10;
+let stepTarget = null;
+
+function select(i) {
+  slide = (i + ARSENAL.length) % ARSENAL.length;
+  const w = ARSENAL[slide];
+
+  dotEls.forEach((el, k) => el.classList.toggle('active', k === slide));
+  liEls.forEach((el, k) => el.classList.toggle('on', k === slide));
+
+  const c = hex(w.tint);
+  document.documentElement.style.setProperty('--accent', c);
+  cubeUniforms.uTint.value.set(w.tint).lerp(new THREE.Color(0xffffff), 0.4);
+  bgMaterial.uniforms.uGlow.value.set(w.tint);
+  cage.material.color.set(c);
+  core.material.emissive.set(w.tint);
+
+  document.getElementById('kicker').textContent = '上线顺序 ' + (slide + 1) + '/' + ARSENAL.length + ' · ' + w.batch;
+  document.getElementById('dBatch').textContent = w.batch;
+  document.getElementById('dNote').textContent = w.note;
+  document.getElementById('dEffect').textContent = w.effect;
+  document.getElementById('dSource').textContent = w.src;
+
+  const dp = document.getElementById('dPrice');
+  if (w.price) dp.innerHTML = money(w.price) + '<span class="pn">' + (w.priceNote || ('区间 ' + range(w.price))) + '</span>' +
+    '<span class="pn">第三方参考价 · 非官方定价</span>';
+  else dp.innerHTML = '<span class="miss">暂未获取</span><span class="pn">' + (w.priceNote || '暂无公开参考价') + '</span>';
+
+  document.getElementById('countNum').textContent = money(w.price);
+  document.getElementById('rmbSign').style.opacity = w.price ? '.9' : '0';
+  if (typeof renderQty === 'function') renderQty();
+  drawHeadline();
+
+  const to = Math.round(rotY / (Math.PI * 2)) * Math.PI * 2 + slide * 0.52;
+  stepTarget = { from: rotY, to, t: 0 };
+  lastInteract = now;
+}
+
+/* ---------- purchase: order modal ---------- */
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+
+function toast(html) {
+  toastEl.innerHTML = html;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 4600);
+}
+
+const modal = document.getElementById('modal');
+const form = document.getElementById('orderForm');
+const inId = document.getElementById('inId');
+const inUid = document.getElementById('inUid');
+const inRegion = document.getElementById('inRegion');
+const paidPanel = document.getElementById('paidPanel');
+
+const fullName = (w) => (w.n > 1 ? w.lines[0] + '／' + w.lines[1] : w.lines[0] + (w.lines[1] ? '·' + w.lines[1] : ''));
+
+/* ---------- quantity stepper ---------- */
+const inQty = document.getElementById('inQty');
+const QTY_MIN = 1, QTY_MAX = 99;
+let qty = 1;
+
+/* 计价基准：第三方参考价区间下限（区间上限仅作行情展示，不参与合计） */
+function unitPrice(w) { return w.price ? w.price[0] : null; }
+
+function renderQty() {
+  const w = ARSENAL[slide];
+  const u = unitPrice(w);
+  const tot = document.getElementById('oTotal');
+  const calc = document.getElementById('oCalc');
+  const label = document.getElementById('payLabel');
+
+  if (u) {
+    const sum = (u * qty).toLocaleString('en-US');
+    tot.textContent = '¥' + sum;
+    calc.textContent = '¥' + u.toLocaleString('en-US') + '/件 × ' + qty + ' · 按参考价下限';
+    label.textContent = '付款 ¥' + sum;
+  } else {
+    tot.textContent = '暂未获取';
+    calc.textContent = '该批次无公开参考价';
+    label.textContent = '付款';
+  }
+  document.getElementById('qtyMinus').disabled = qty <= QTY_MIN;
+  document.getElementById('qtyPlus').disabled = qty >= QTY_MAX;
+}
+
+function setQty(v) {
+  qty = Math.min(QTY_MAX, Math.max(QTY_MIN, Number.isFinite(v) ? v : QTY_MIN));
+  inQty.value = String(qty);
+  renderQty();
+}
+
+document.getElementById('qtyMinus').addEventListener('click', () => setQty(qty - 1));
+document.getElementById('qtyPlus').addEventListener('click', () => setQty(qty + 1));
+
+inQty.addEventListener('input', () => {
+  inQty.value = inQty.value.replace(/\D/g, '').slice(0, 2);
+  document.getElementById('fQty').classList.remove('bad');
+  const v = parseInt(inQty.value, 10);
+  if (v >= QTY_MIN && v <= QTY_MAX) { qty = v; renderQty(); }
+});
+
+inQty.addEventListener('change', () => setQty(parseInt(inQty.value, 10)));
+
+function openOrder() {
+  const w = ARSENAL[slide];
+  document.getElementById('oName').textContent = fullName(w);
+  document.getElementById('oBatch').textContent = w.batch + ' · ' + w.rank;
+  document.getElementById('oPrice').textContent = w.price
+    ? '¥' + range(w.price) + '（第三方参考价）'
+    : '暂未获取公开参考价';
+
+  form.reset();
+  form.classList.remove('done');
+  paidPanel.hidden = true;
+  ['fId', 'fUid', 'fRegion', 'fQty'].forEach((id) => document.getElementById(id).classList.remove('bad'));
+  document.getElementById('payBtn').disabled = false;
+  setQty(1);
+
+  modal.classList.add('open');
+  setTimeout(() => inId.focus(), 60);
+}
+
+function closeOrder() {
+  modal.classList.remove('open');
+}
+
+function bad(fieldId, msg) {
+  const f = document.getElementById(fieldId);
+  f.classList.add('bad');
+  if (msg) {
+    const e = f.querySelector('.err');
+    if (e) e.textContent = msg;
+  }
+}
+
+['buyMain', 'buyCard'].forEach((id) => {
+  document.getElementById(id).addEventListener('click', (e) => {
+    e.preventDefault();
+    openOrder();
+  });
+});
+
+document.getElementById('orderClose').addEventListener('click', closeOrder);
+
+modal.addEventListener('click', (e) => {
+  if (e.target === modal) closeOrder();
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modal.classList.contains('open')) closeOrder();
+});
+
+[inId, inUid, inRegion].forEach((el) => {
+  el.addEventListener('input', () => el.closest('.field').classList.remove('bad'));
+  el.addEventListener('change', () => el.closest('.field').classList.remove('bad'));
+});
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  ['fId', 'fUid', 'fRegion'].forEach((id) => document.getElementById(id).classList.remove('bad'));
+
+  const idVal = inId.value.trim();
+  const uidVal = inUid.value.trim();
+  const regionVal = inRegion.value;
+  let ok = true;
+
+  if (!idVal) { bad('fId', '请填写游戏ID'); ok = false; }
+  if (!/^\d{6,20}$/.test(uidVal)) {
+    bad('fUid', uidVal ? 'UID 只能为 6–20 位数字' : '请填写 UID');
+    ok = false;
+  }
+  if (!regionVal) { bad('fRegion', '请选择游戏大区'); ok = false; }
+  if (!(qty >= QTY_MIN && qty <= QTY_MAX)) { bad('fQty', '数量需为 ' + QTY_MIN + '–' + QTY_MAX + ' 之间的整数'); ok = false; }
+  if (!ok) return;
+
+  const w = ARSENAL[slide];
+  const u = unitPrice(w);
+  document.getElementById('rName').textContent = fullName(w);
+  document.getElementById('rId').textContent = idVal;
+  document.getElementById('rUid').textContent = uidVal;
+  document.getElementById('rRegion').textContent = regionVal;
+  document.getElementById('rQty').textContent = qty + ' 件';
+  document.getElementById('rAmount').textContent = u
+    ? '¥' + (u * qty).toLocaleString('en-US') + '（¥' + u.toLocaleString('en-US') + '/件 × ' + qty + '）'
+    : '暂未获取公开参考价 × ' + qty + ' 件';
+
+  form.classList.add('done');
+  paidPanel.hidden = false;
+  toast('本页未接入真实支付通道，仅完成信息登记演示。');
+});
+
+document.getElementById('againBtn').addEventListener('click', () => {
+  closeOrder();
+  form.classList.remove('done');
+  paidPanel.hidden = true;
+});
+
+canvas.addEventListener('pointerdown', (e) => {
+  dragging = true;
+  stepTarget = null;
+  lastX = e.clientX; lastY = e.clientY;
+  velX = velY = 0;
+  canvas.classList.add('dragging');
+  if (canvas.setPointerCapture) { try { canvas.setPointerCapture(e.pointerId); } catch (err) {} }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  velX = (e.clientX - lastX) * 0.006;
+  velY = (e.clientY - lastY) * 0.005;
+  lastX = e.clientX; lastY = e.clientY;
+  rotY += velX;
+  rotX = Math.max(-1.15, Math.min(1.15, rotX + velY));
+  lastInteract = now;
+});
+
+function endDrag() {
+  dragging = false;
+  canvas.classList.remove('dragging');
+}
+['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => canvas.addEventListener(ev, endDrag));
+window.addEventListener('blur', endDrag);
+
+document.getElementById('next').addEventListener('click', () => select(slide + 1));
+document.getElementById('prev').addEventListener('click', () => select(slide - 1));
+window.addEventListener('keydown', (e) => {
+  if (modal.classList.contains('open')) return;
+  if (e.key === 'ArrowRight') select(slide + 1);
+  if (e.key === 'ArrowLeft') select(slide - 1);
+});
+
+document.getElementById('statCount').textContent =
+  String(ARSENAL.reduce((a, w) => a + (w.n || 1), 0));
+
+/* ---------- loop ---------- */
+const clock = new THREE.Clock();
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  now += dt;
+
+  if (stepTarget) {
+    stepTarget.t = Math.min(1, stepTarget.t + dt / 0.7);
+    const e = 1 - Math.pow(1 - stepTarget.t, 3);
+    rotY = stepTarget.from + (stepTarget.to - stepTarget.from) * e;
+    if (stepTarget.t >= 1) stepTarget = null;
+  } else if (!dragging) {
+    rotY += velX; rotX += velY;
+    velX *= 0.93; velY *= 0.93;
+    rotY += 0.2 * dt * Math.min(1, Math.max(0, (now - lastInteract - 1.4) / 1.5));
+    rotX = Math.max(-1.15, Math.min(1.15, rotX));
+  }
+
+  spinner.rotation.set(rotX, rotY, 0);
+  core.rotation.set(-rotY * 0.6, now * 0.5, 0);
+  cage.scale.setScalar(1 + Math.sin(now * 1.9) * 0.035);
+
+  renderer.setRenderTarget(rt);
+  renderer.render(bgScene, camera);
+  renderer.setRenderTarget(null);
+  renderer.render(scene, camera);
+
+  requestAnimationFrame(tick);
+}
+
+/* ---------- boot ---------- */
+const fontWait = Promise.race([
+  Promise.all([document.fonts.load("900 100px 'Noto Sans SC'"), document.fonts.ready]),
+  new Promise((resolve) => setTimeout(resolve, 2500))
+]);
+
+fontWait.then(() => {
+  resize();
+  select(0);
+  requestAnimationFrame(tick);
+});
+</script>
+</body>
+</html>
